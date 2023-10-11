@@ -33,36 +33,35 @@ def new_client(client, server):
             )
             server.deny_new_connections()
 
+
 def client_disconnected(client, server):
     global clientCount
     clientCount -= 1
     server.allow_new_connections()
 
+
 def new_message(sender_client, server, message):
     data = json.loads(message)
-    match data["status"]:
-        case Status.turn_change:
-            for client in server.clients:
-                if sender_client["id"] != client["id"]:
-                    server.send_message(
-                        client,
-                        json.dumps(
-                            {"status": Status.turn_change, "board": data["board"]}
-                        ),
-                    )
-                    break
-        case Status.game_over:
-            for client in server.clients:
-                if sender_client["id"] != client["id"]:
-                    server.send_message(
-                        client,
-                        json.dumps({"status": Status.lose, "board": data["board"]}),
-                    )
-                    break
-        case Status.draw:
-            server.send_message_to_all(json.dumps({"status": Status.draw}))
-        case Status.play_again:
-            server.send_message_to_all(json.dumps({"status": Status.play_again}))
+    if data["status"] == Status.turn_change:
+        for client in server.clients:
+            if sender_client["id"] != client["id"]:
+                server.send_message(
+                    client,
+                    json.dumps({"status": Status.turn_change, "board": data["board"]}),
+                )
+                break
+    if data["status"] == Status.game_over:
+        for client in server.clients:
+            if sender_client["id"] != client["id"]:
+                server.send_message(
+                    client,
+                    json.dumps({"status": Status.lose, "board": data["board"]}),
+                )
+                break
+    if data["status"] == Status.draw:
+        server.send_message_to_all(json.dumps({"status": Status.draw}))
+    if data["status"] == Status.play_again:
+        server.send_message_to_all(json.dumps({"status": Status.play_again}))
 
 
 server = WebsocketServer(host="0.0.0.0", port=13254, loglevel=logging.INFO)
