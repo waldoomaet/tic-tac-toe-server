@@ -4,7 +4,7 @@ from enum import Enum
 from websocket_server import WebsocketServer
 
 max_players = 2
-clientCount = 0
+client_player = {}
 
 
 class Status(str, Enum):
@@ -17,26 +17,42 @@ class Status(str, Enum):
     play_again = "play_again"
 
 
+class Player(str, Enum):
+    x = "X".upper()
+    o = "O".upper()
+
+
 def new_client(client, server):
     # This is a really bad practice, but 🤷‍♂️
-    global clientCount
-
-    if clientCount < max_players:
+    global client_player
+    if len(server.clients) <= max_players:
+        if Player.x not in client_player.values():
+            client_player[client["id"]] = Player.x
+        else:
+            client_player[client["id"]] = Player.o
+        
         server.send_message(
-            client, json.dumps({"status": Status.connected, "id": clientCount})
+            client,
+            json.dumps(
+                {
+                    "status": Status.connected,
+                    "id": client["id"],
+                    "player": client_player[client["id"]],
+                }
+            ),
         )
-        clientCount += 1
-        print(f"Player {clientCount} connected!")
-        if clientCount == 2:
+
+        print(f"Player {client_player[client['id']]} connected!")
+        if len(server.clients) == max_players:
             server.send_message_to_all(
-                json.dumps({"status": Status.started, "id": clientCount})
+                json.dumps({"status": Status.started})
             )
             server.deny_new_connections()
 
 
 def client_disconnected(client, server):
-    global clientCount
-    clientCount -= 1
+    global client_player
+    del client_player[client["id"]]
     server.allow_new_connections()
 
 
@@ -51,6 +67,7 @@ def new_message(sender_client, server, message):
                 )
                 break
     if data["status"] == Status.game_over:
+        # show_winner()
         for client in server.clients:
             if sender_client["id"] != client["id"]:
                 server.send_message(
